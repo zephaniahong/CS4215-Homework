@@ -1,0 +1,9 @@
+{
+  "dependencies": {
+    "sicp": "^1.1.4"
+  },
+  "type": "module",
+  "prettier": {
+    "trailingComma": "none"
+  }
+}
