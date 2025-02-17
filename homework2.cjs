@@ -608,13 +608,20 @@ const microcode = {
       cmd.pred
     ),
   break: (_) => {
-    push(C, { tag: "break_i" }, { tag: "lit", val: undefined });
+    push(C, { tag: "break_i" });
   },
 
   //
   // instructions
   //
-  break_i: (cmd) => (C.pop().tag === "lit" ? push(S) : push(C, cmd)),
+  // Pop until we reach the lit tag inserted by the while loop
+  break_i: (cmd) => {
+    if (!(peek(C).tag === "lit")) {
+      C.pop();
+      push(C, cmd); // Add the break_i instruction to continue the loop
+    }
+  },
+  // C.pop().tag === "lit" ? push(C, { tag: "lit" }) : push(C, cmd),
   reset_i: (cmd) =>
     C.pop().tag === "mark_i" // mark found?
       ? null // stop loop
@@ -719,7 +726,7 @@ const execute = (program) => {
     const cmd = C.pop();
     if (microcode.hasOwnProperty(cmd.tag)) {
       microcode[cmd.tag](cmd);
-      // debug(cmd);
+      debug(cmd);
     } else {
       error("", "unknown command: " + command_to_string(cmd));
     }
@@ -784,25 +791,26 @@ Test case: ` +
 };
 
 // example test case:
-test("1 + 2;", 3);
+// test("1 + 2;", 3);
 
 // after you complete this question, the following test cases should pass
 
 // test("while (true) { break; }", undefined);
 
-// test(
-//   `
-//     let x = 0;
-//     while (x < 5) {
-//       display(x);
-//       x = x + 1;
-//       if (x === 3) {
-//         break;
-//       }
-//     }
-//     `,
-//   undefined
-// );
+test(
+  `
+    let x = 0;
+    while (x < 3) {
+      display(x);
+      let j = 5;
+      if (x === 1) {
+        break;
+      }
+      x = x + 1;
+    }
+    `,
+  undefined
+);
 
 // test(
 //   `
