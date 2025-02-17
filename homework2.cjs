@@ -615,12 +615,7 @@ const microcode = {
   // instructions
   //
   // Pop until we reach the lit tag inserted by the while loop
-  break_i: (cmd) => {
-    if (!(peek(C).tag === "lit")) {
-      C.pop();
-      push(C, cmd); // Add the break_i instruction to continue the loop
-    }
-  },
+  break_i: (cmd) => (C.pop().tag === "while_i" ? null : push(C, cmd)),
   // C.pop().tag === "lit" ? push(C, { tag: "lit" }) : push(C, cmd),
   reset_i: (cmd) =>
     C.pop().tag === "mark_i" // mark found?
@@ -726,7 +721,7 @@ const execute = (program) => {
     const cmd = C.pop();
     if (microcode.hasOwnProperty(cmd.tag)) {
       microcode[cmd.tag](cmd);
-      debug(cmd);
+      // debug(cmd);
     } else {
       error("", "unknown command: " + command_to_string(cmd));
     }
@@ -800,10 +795,10 @@ Test case: ` +
 test(
   `
     let x = 0;
-    while (x < 3) {
+    while (x < 5) {
       display(x);
       let j = 5;
-      if (x === 1) {
+      if (x === 2) {
         break;
       }
       x = x + 1;
