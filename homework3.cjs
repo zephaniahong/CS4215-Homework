@@ -1,11 +1,9 @@
-Object.entries(require("sicp")).forEach(
-  ([name, exported]) => (global[name] = exported)
-);
 // If you use Node.js and not https://sourceacademy.org,
 // uncomment the following two lines:
 
-// Object.entries(require('sicp'))
-//       .forEach(([name, exported]) => global[name] = exported);
+Object.entries(require("sicp")).forEach(
+  ([name, exported]) => (global[name] = exported)
+);
 
 /* ****************************************
  * Explicit-control evaluator for Source §4
@@ -607,26 +605,31 @@ const microcode = {
       { tag: "while_i", pred: cmd.pred, body: cmd.body },
       cmd.pred
     ),
-  break: (_) => {
-    push(C, { tag: "break_i" });
-  },
-  cont: (_) => push(C, { tag: "cont_i" }),
+  try: (cmd) =>
+    push(
+      C,
+      { tag: "catch_i", sym: cmd.sym, catch: cmd.catch, env: E }, // for throw_i to know when to stop popping
+      { tag: "try_i", body: cmd.body } // Qns: how do we know whether to push something like a try_i or just do whatever try_i does here instead?
+    ),
+  throw: (cmd) => push(C, { tag: "throw_i" }, cmd.expr), // Evaluate the value of the throw expression first
 
   //
   // instructions
   //
-
-  // Pop until we reach the while_i instruction
-  break_i: (cmd) => (C.pop().tag === "while_i" ? null : push(C, cmd)),
-  cont_i: (cmd) => {
-    if (!(peek(C).tag === "while_i")) {
-      C.pop();
-      pred_cmd = push(C, cmd); // Push the cmd back to continue looping
+  throw_i: (cmd) => {
+    const next = C.pop();
+    if (next.tag === "catch_i") {
+      // catch found?
+      const catch_cmd = next; // stop loop
+      push(C, { tag: "env_i", env: catch_cmd.env }, catch_cmd.catch);
+      E = extend([catch_cmd.sym], [S.pop()], catch_cmd.env);
     } else {
-      while_instruction = C.pop();
-      push(C, while_instruction);
-      push(C, while_instruction.pred); // Continue from the evaluation of the predicate
+      // continue loop by pushing same
+      push(C, cmd); // throw_i instruction back on control
     }
+  },
+  try_i: (cmd) => {
+    push(C, cmd.body);
   },
   reset_i: (cmd) =>
     C.pop().tag === "mark_i" // mark found?
@@ -701,18 +704,6 @@ const microcode = {
     const arr = S.pop();
     arr[ind] = val;
     push(S, val);
-  },
-  throw_i: (cmd) => {
-    const next = C.pop();
-    if (next.tag === "catch_i") {
-      // catch found?
-      const catch_cmd = next; // stop loop
-      push(C, { tag: "env_i", env: catch_cmd.env }, catch_cmd.catch);
-      E = extend([catch_cmd.sym], [S.pop()], catch_cmd.env);
-    } else {
-      // continue loop by pushing same
-      push(C, cmd); // throw_i instruction back on control
-    }
   }
 };
 
@@ -797,48 +788,32 @@ Test case: ` +
 };
 
 // example test case:
-test("1 + 2;", 3);
+// test("1 + 2;", 3);
 
 // after you complete this question, the following test cases should pass
 
-test("while (true) { break; }", undefined);
-
-test(
-  `
-    let x = 0;
-    while (x < 5) {
-      display(x);
-      let j = 5;
-      if (x === 2) {
-        break;
-      }
-      x = x + 1;
-    }
-    `,
-  undefined
-);
-
-test(
-  `
-let x = 0;
-let y = 0;
-while (x < 10) { 
-  x = x + 1; 
-  continue;
-  y = y + 1;
+const try_catch_1 = `
+try {
+    display(1);
+    throw 2;
+    display(3); // should not show
+} catch(e) {
+    display(e);    
 }
-  x + y;
-  `,
-  10
-);
+`;
+test(try_catch_1, 2);
 
-test(
-  `
-let x = 0;
-let y = 0;
-while (x < 10) { x = x + 1; break; y = y + 1; }
-x + y;`,
-  1
-);
+const try_catch_2 = `
+let y = 5;
+try {
+    const x = 1;
+    throw 2;
+    display(3); // should not show
+} catch(e) {
+    const x = 4;
+    y = y + e + x;
+}
+`;
+test(try_catch_2, 11);
 
 //
